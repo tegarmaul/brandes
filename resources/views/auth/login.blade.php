@@ -372,9 +372,9 @@
         <form action="{{ route('login') }}" method="POST">
             @csrf
 
-            {{-- Nama --}}
+            {{-- Username --}}
             <div class="form-group">
-                <label for="nama">Nama</label>
+                <label for="username">Username</label>
                 <div class="input-wrapper">
                     <span class="input-icon">
                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none">
@@ -383,11 +383,11 @@
                     </span>
                     <input
                         type="text"
-                        id="nama"
-                        name="nama"
+                        id="username"
+                        name="username"
                         class="form-control"
-                        placeholder="Masukan nama anda"
-                        value="{{ old('nama') }}"
+                        placeholder="Masukan username anda"
+                        value="{{ old('username') }}"
                         required
                         autocomplete="off"
                     >

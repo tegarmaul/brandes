@@ -29,38 +29,38 @@ class AuthController extends Controller
     public function login(Request $request)
     {
         $request->validate([
-            'nama' => 'required|string',
-            'pin'  => 'required|string',
-            'role' => 'required|in:admin,user',
+            'username' => 'required|string',
+            'pin'      => 'required|string',
+            'role'     => 'required|in:admin,user',
         ]);
 
-        $nama = trim($request->nama);
-        $role = $request->role;
-        $pin  = $request->pin;
+        $username = trim($request->username);
+        $role     = $request->role;
+        $pin      = $request->pin;
 
-        // Cari user — nama case-insensitive, tidak filter aktif dulu
-        $user = User::whereRaw('LOWER(nama) = ?', [strtolower($nama)])
+        // Cari user — username case-insensitive, tidak filter aktif dulu
+        $user = User::whereRaw('LOWER(username) = ?', [strtolower($username)])
                     ->where('role', $role)
                     ->first();
 
         // Tidak ditemukan
         if (!$user) {
             return back()
-                ->withInput($request->only('nama', 'role'))
-                ->withErrors(['login' => 'Nama atau role tidak ditemukan di sistem.']);
+                ->withInput($request->only('username', 'role'))
+                ->withErrors(['login' => 'Username atau role tidak ditemukan di sistem.']);
         }
 
         // Akun nonaktif
         if (!$user->aktif) {
             return back()
-                ->withInput($request->only('nama', 'role'))
+                ->withInput($request->only('username', 'role'))
                 ->withErrors(['login' => 'Akun Anda tidak aktif. Hubungi administrator.']);
         }
 
         // PIN salah
         if (!Hash::check($pin, $user->pin)) {
             return back()
-                ->withInput($request->only('nama', 'role'))
+                ->withInput($request->only('username', 'role'))
                 ->withErrors(['login' => 'PIN yang Anda masukkan salah.']);
         }
 
