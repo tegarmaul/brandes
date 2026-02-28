@@ -25,13 +25,14 @@ db.run(`
 `);
 
 // ─── USERS TABLE ────────────────────────────────────────────────────────────
+// fingerprint_id: INTEGER — nomor slot sensor biometrik AS608/R307 pada ESP32 (1–127)
 db.run(`
   CREATE TABLE IF NOT EXISTS users (
     id             INTEGER PRIMARY KEY AUTOINCREMENT,
     nama           TEXT    NOT NULL,
     username       TEXT    NOT NULL UNIQUE,
     pin            TEXT    NOT NULL,
-    fingerprint_id TEXT    UNIQUE,
+    fingerprint_id INTEGER UNIQUE,
     role           TEXT    NOT NULL DEFAULT 'user' CHECK(role IN ('admin','user')),
     aktif          INTEGER NOT NULL DEFAULT 1,
     created_at     DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -120,7 +121,7 @@ db.run(`
     nama           TEXT,
     aktivitas      TEXT    NOT NULL,
     status         TEXT    NOT NULL DEFAULT 'Berhasil' CHECK(status IN ('Berhasil','Gagal')),
-    fingerprint_id TEXT,
+    fingerprint_id INTEGER,
     waktu          DATETIME DEFAULT CURRENT_TIMESTAMP,
     created_at     DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at     DATETIME DEFAULT CURRENT_TIMESTAMP
@@ -145,39 +146,71 @@ db.run(`
 console.log('✅ Tabel notifikasi_keamanan dibuat');
 
 // ─── LOKASI BRANKAS TABLE ────────────────────────────────────────────────────
+// Kolom GPS Neo-6M: altitude, hdop, satellites, speed_kmh, fix_quality, last_gps_update
 db.run(`
   CREATE TABLE IF NOT EXISTS lokasi_brankas (
-    id            INTEGER PRIMARY KEY AUTOINCREMENT,
-    nama_brankas  TEXT    NOT NULL,
-    lokasi        TEXT    NOT NULL,
-    kode_brankas  TEXT    NOT NULL UNIQUE,
-    status        TEXT    NOT NULL DEFAULT 'aman' CHECK(status IN ('aman','terbuka','peringatan')),
-    latitude      REAL,
-    longitude     REAL,
-    keterangan    TEXT,
-    aktif         INTEGER NOT NULL DEFAULT 1,
-    created_at    DATETIME DEFAULT CURRENT_TIMESTAMP,
-    updated_at    DATETIME DEFAULT CURRENT_TIMESTAMP
+    id               INTEGER PRIMARY KEY AUTOINCREMENT,
+    nama_brankas     TEXT    NOT NULL,
+    lokasi           TEXT    NOT NULL,
+    kode_brankas     TEXT    NOT NULL UNIQUE,
+    status           TEXT    NOT NULL DEFAULT 'aman' CHECK(status IN ('aman','terbuka','peringatan')),
+    latitude         REAL,
+    longitude        REAL,
+    altitude         REAL,
+    hdop             REAL,
+    satellites       INTEGER,
+    speed_kmh        REAL,
+    fix_quality      INTEGER NOT NULL DEFAULT 0,
+    last_gps_update  DATETIME,
+    keterangan       TEXT,
+    aktif            INTEGER NOT NULL DEFAULT 1,
+    created_at       DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at       DATETIME DEFAULT CURRENT_TIMESTAMP
   )
 `);
 console.log('✅ Tabel lokasi_brankas dibuat');
+
+// ─── LOKASI HISTORY TABLE ────────────────────────────────────────────────────
+// Riwayat posisi GPS yang dikirim ESP32 + GPS Neo-6M
+db.run(`
+  CREATE TABLE IF NOT EXISTS lokasi_history (
+    id                 INTEGER PRIMARY KEY AUTOINCREMENT,
+    lokasi_brankas_id  INTEGER NOT NULL REFERENCES lokasi_brankas(id) ON DELETE CASCADE,
+    latitude           REAL    NOT NULL,
+    longitude          REAL    NOT NULL,
+    altitude           REAL,
+    hdop               REAL,
+    satellites         INTEGER,
+    fix_quality        INTEGER NOT NULL DEFAULT 0,
+    speed_kmh          REAL,
+    getaran            REAL,
+    status             TEXT    NOT NULL DEFAULT 'normal' CHECK(status IN ('normal','waspada','bahaya')),
+    raw_nmea           TEXT,
+    recorded_at        DATETIME DEFAULT CURRENT_TIMESTAMP,
+    created_at         DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at         DATETIME DEFAULT CURRENT_TIMESTAMP
+  )
+`);
+db.run(`CREATE INDEX IF NOT EXISTS lokasi_history_brankas_recorded_idx ON lokasi_history(lokasi_brankas_id, recorded_at)`);
+console.log('✅ Tabel lokasi_history dibuat');
 
 // ─── SEED DATA ───────────────────────────────────────────────────────────────
 console.log('\n🌱 Mengisi data awal (seeder)...\n');
 
 // Hash PIN menggunakan bcrypt via Bun.password
+// fingerprint_id: nomor slot INTEGER sensor biometrik (1–127), null jika belum terdaftar
 const users = [
-  { nama: 'Fitriyah',      username: 'fitriyah',    pin: '123456', fingerprint_id: null,           role: 'admin', aktif: 1 },
-  { nama: 'M Zaeni',       username: 'zaeni',        pin: '150804', fingerprint_id: null,           role: 'admin', aktif: 1 },
-  { nama: 'Ikhwanudin F',  username: 'ikhwanudin',   pin: '678926', fingerprint_id: 'FP-001-A5C1',  role: 'user',  aktif: 1 },
-  { nama: 'Akhmad Sodikin',username: 'sodikin',      pin: '783543', fingerprint_id: 'FP-002-B4F3',  role: 'user',  aktif: 1 },
-  { nama: 'Sri Endang',    username: 'sri endang',   pin: '985638', fingerprint_id: 'FP-003-C2V8',  role: 'user',  aktif: 1 },
-  { nama: 'Sutrisno',      username: 'sutrisno',     pin: '159036', fingerprint_id: 'FP-004-D9M4',  role: 'user',  aktif: 1 },
-  { nama: 'M Wakhidin',    username: 'wakhidin',     pin: '387678', fingerprint_id: 'FP-005-E6X1',  role: 'user',  aktif: 1 },
-  { nama: 'Joko Udiono',   username: 'joko',         pin: '687257', fingerprint_id: 'FP-006-F8T6',  role: 'user',  aktif: 1 },
-  { nama: 'Mashruri',      username: 'mashruri',     pin: '865478', fingerprint_id: 'FP-009-G0B7',  role: 'user',  aktif: 1 },
-  { nama: 'Masroi',        username: 'masroi',       pin: '237893', fingerprint_id: 'FP-010-Z7N4',  role: 'user',  aktif: 1 },
-  { nama: 'Moh Zaeni',     username: 'moh zaeni',    pin: '857487', fingerprint_id: 'FP-011-M4T1',  role: 'user',  aktif: 1 },
+  { nama: 'Fitriyah',       username: 'fitriyah',    pin: '123456', fingerprint_id: null, role: 'admin', aktif: 1 },
+  { nama: 'M Zaeni',        username: 'zaeni',        pin: '150804', fingerprint_id: null, role: 'admin', aktif: 1 },
+  { nama: 'Ikhwanudin F',   username: 'ikhwanudin',   pin: '678926', fingerprint_id: 1,    role: 'user',  aktif: 1 },
+  { nama: 'Akhmad Sodikin', username: 'sodikin',      pin: '783543', fingerprint_id: 2,    role: 'user',  aktif: 1 },
+  { nama: 'Sri Endang',     username: 'sri_endang',   pin: '985638', fingerprint_id: 3,    role: 'user',  aktif: 1 },
+  { nama: 'Sutrisno',       username: 'sutrisno',     pin: '159036', fingerprint_id: 4,    role: 'user',  aktif: 1 },
+  { nama: 'M Wakhidin',     username: 'wakhidin',     pin: '387678', fingerprint_id: 5,    role: 'user',  aktif: 1 },
+  { nama: 'Joko Udiono',    username: 'joko',         pin: '687257', fingerprint_id: 6,    role: 'user',  aktif: 1 },
+  { nama: 'Mashruri',       username: 'mashruri',     pin: '865478', fingerprint_id: 7,    role: 'user',  aktif: 1 },
+  { nama: 'Masroi',         username: 'masroi',       pin: '237893', fingerprint_id: 8,    role: 'user',  aktif: 1 },
+  { nama: 'Moh Zaeni',      username: 'moh_zaeni',    pin: '857487', fingerprint_id: 9,    role: 'user',  aktif: 1 },
 ];
 
 const insertUser = db.prepare(`
@@ -195,28 +228,33 @@ for (const user of users) {
     $role:           user.role,
     $aktif:          user.aktif,
   });
-  console.log(`  ✅ User [${user.role}] ${user.nama} (${user.username}) — PIN: ${user.pin}`);
+  const fpLabel = user.fingerprint_id ? `Slot #${user.fingerprint_id}` : 'Belum terdaftar';
+  console.log(`  ✅ User [${user.role}] ${user.nama} (${user.username}) — PIN: ${user.pin} — FP: ${fpLabel}`);
 }
 
 // ─── SEED LOKASI BRANKAS ─────────────────────────────────────────────────────
 const insertLokasi = db.prepare(`
-  INSERT OR IGNORE INTO lokasi_brankas (nama_brankas, lokasi, kode_brankas, status, keterangan, aktif)
-  VALUES ($nama_brankas, $lokasi, $kode_brankas, $status, $keterangan, $aktif)
+  INSERT OR IGNORE INTO lokasi_brankas (nama_brankas, lokasi, kode_brankas, status, latitude, longitude, keterangan, aktif)
+  VALUES ($nama_brankas, $lokasi, $kode_brankas, $status, $latitude, $longitude, $keterangan, $aktif)
 `);
 
 insertLokasi.run({
-  $nama_brankas: 'Brankas Utama',
-  $lokasi:       'Ruang Keuangan Lt. 1',
+  $nama_brankas: 'Brankas Balai Desa Bengle',
+  $lokasi:       'Jl. Projosumarto II No. 16, Bengledukuh, Desa Bengle, Kecamatan Talang, Kabupaten Tegal',
   $kode_brankas: 'BRK-001',
   $status:       'aman',
-  $keterangan:   'Brankas utama penyimpanan dokumen penting',
+  $latitude:     -6.91050000,
+  $longitude:    109.14790000,
+  $keterangan:   'Brankas utama penyimpanan dokumen penting Balai Desa Bengle',
   $aktif:        1,
 });
 insertLokasi.run({
   $nama_brankas: 'Brankas Cadangan',
-  $lokasi:       'Ruang Server Lt. 2',
+  $lokasi:       'Ruang Server Lt. 2, Balai Desa Bengle',
   $kode_brankas: 'BRK-002',
   $status:       'aman',
+  $latitude:     null,
+  $longitude:    null,
   $keterangan:   'Brankas cadangan untuk backup dokumen',
   $aktif:        1,
 });
@@ -229,12 +267,12 @@ const insertHistory = db.prepare(`
 `);
 
 const historyData = [
-  { user_id: 3, nama: 'Ikhwanudin F',  aktivitas: 'Membuka Brankas',          status: 'Berhasil', fingerprint_id: 'FP-001-A5C1', waktu: '2026-01-31 14:25:30' },
-  { user_id: 5, nama: 'Sri Endang',    aktivitas: 'Membuka Brankas',          status: 'Berhasil', fingerprint_id: 'FP-003-C2V8', waktu: '2026-01-31 14:15:12' },
-  { user_id: null, nama: 'Unknown',    aktivitas: 'Percobaan Akses Gagal',    status: 'Gagal',    fingerprint_id: null,           waktu: '2026-01-31 13:30:45' },
-  { user_id: 4, nama: 'Akhmad Sodikin',aktivitas: 'Membuka Brankas',          status: 'Berhasil', fingerprint_id: 'FP-002-B4F3', waktu: '2026-01-31 12:45:20' },
-  { user_id: 3, nama: 'Ikhwanudin F',  aktivitas: 'Membuka Brankas',          status: 'Berhasil', fingerprint_id: 'FP-001-A5C1', waktu: '2026-01-31 11:30:15' },
-  { user_id: 7, nama: 'M Wakhidin',    aktivitas: 'Percobaan Akses Gagal',    status: 'Gagal',    fingerprint_id: 'FP-005-E6X1', waktu: '2026-01-31 13:30:45' },
+  { user_id: 3, nama: 'Ikhwanudin F',   aktivitas: 'Membuka Brankas',       status: 'Berhasil', fingerprint_id: 1,    waktu: '2026-01-31 14:25:30' },
+  { user_id: 5, nama: 'Sri Endang',     aktivitas: 'Membuka Brankas',       status: 'Berhasil', fingerprint_id: 3,    waktu: '2026-01-31 14:15:12' },
+  { user_id: null, nama: 'Unknown',     aktivitas: 'Percobaan Akses Gagal', status: 'Gagal',    fingerprint_id: null, waktu: '2026-01-31 13:30:45' },
+  { user_id: 4, nama: 'Akhmad Sodikin', aktivitas: 'Membuka Brankas',       status: 'Berhasil', fingerprint_id: 2,    waktu: '2026-01-31 12:45:20' },
+  { user_id: 3, nama: 'Ikhwanudin F',   aktivitas: 'Membuka Brankas',       status: 'Berhasil', fingerprint_id: 1,    waktu: '2026-01-31 11:30:15' },
+  { user_id: 7, nama: 'M Wakhidin',     aktivitas: 'Percobaan Akses Gagal', status: 'Gagal',    fingerprint_id: 5,    waktu: '2026-01-31 13:30:45' },
 ];
 
 for (const h of historyData) {
@@ -269,6 +307,9 @@ const migrations = [
   '2026_02_28_000001_create_history_akses_table',
   '2026_02_28_000002_create_notifikasi_keamanan_table',
   '2026_02_28_000003_create_lokasi_brankas_table',
+  '2026_02_28_000004_change_fingerprint_id_type_in_users_table',
+  '2026_02_28_000005_add_gps_columns_to_lokasi_brankas_table',
+  '2026_02_28_000006_create_lokasi_history_table',
 ];
 
 const insertMigration = db.prepare(`INSERT OR IGNORE INTO migrations (migration, batch) VALUES ($migration, 1)`);
@@ -282,7 +323,8 @@ console.log('\n✅ Database SQLite berhasil dibuat dan diisi!');
 console.log(`📁 Lokasi: ${dbPath}`);
 console.log('\n📋 Ringkasan:');
 console.log('   - 2 admin (fitriyah, zaeni)');
-console.log('   - 9 user biasa');
-console.log('   - 2 lokasi brankas');
+console.log('   - 9 user biasa (slot fingerprint 1–9)');
+console.log('   - 2 lokasi brankas (BRK-001 dengan koordinat GPS, BRK-002 tanpa GPS)');
 console.log('   - 6 history akses');
 console.log('   - 3 notifikasi keamanan');
+console.log('   - Tabel lokasi_history siap menerima data GPS Neo-6M dari ESP32');
