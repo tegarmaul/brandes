@@ -19,16 +19,15 @@ Route::get('/', function () {
 });
 
 // Form login — GET tampilkan, POST proses
-// Keduanya pakai URL yang sama '/login' agar form action="{{ route('login') }}" langsung POST ke sini
 Route::get('/login',  [AuthController::class, 'showLogin'])->name('login');
 Route::post('/login', [AuthController::class, 'login'])->name('login.post');
 
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
 /* ═══════════════════════════════════════
-   ADMIN ROUTES
+   ADMIN ROUTES — hanya role admin
 ═══════════════════════════════════════ */
-Route::middleware(['auth.brandes:admin'])->group(function () {
+Route::middleware(['role.admin'])->group(function () {
 
     Route::get('/dashboard/admin', [DashboardController::class, 'admin'])
          ->name('dashboard.admin');
@@ -46,9 +45,9 @@ Route::middleware(['auth.brandes:admin'])->group(function () {
 });
 
 /* ═══════════════════════════════════════
-   USER ROUTES
+   USER ROUTES — hanya role user biasa
 ═══════════════════════════════════════ */
-Route::middleware(['auth.brandes:user'])->group(function () {
+Route::middleware(['role.user'])->group(function () {
 
     Route::get('/dashboard/user', [DashboardController::class, 'user'])
          ->name('dashboard.user');
@@ -56,7 +55,7 @@ Route::middleware(['auth.brandes:user'])->group(function () {
 });
 
 /* ═══════════════════════════════════════
-   SHARED ROUTES (admin + user)
+   SHARED ROUTES (admin + user, cukup login)
 ═══════════════════════════════════════ */
 Route::middleware(['auth.brandes'])->group(function () {
 

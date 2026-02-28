@@ -6,17 +6,18 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
+    /**
+     * Kolom fingerprint sudah ada di create_users_table migration.
+     * Migration ini diabaikan agar tidak terjadi duplikasi kolom.
+     */
     public function up(): void
     {
-        Schema::table('users', function (Blueprint $table) {
-            $table->string('fingerprint')->nullable()->after('nama');
-        });
+        // Kolom fingerprint_id sudah didefinisikan di 0001_01_01_000000_create_users_table.php
+        // Tidak perlu menambahkan kolom lagi
     }
 
     public function down(): void
     {
-        Schema::table('users', function (Blueprint $table) {
-            $table->dropColumn('fingerprint');
-        });
+        // Tidak ada yang perlu di-rollback
     }
 };
