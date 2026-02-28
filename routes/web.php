@@ -8,6 +8,7 @@ use App\Http\Controllers\NotifikasiController;
 use App\Http\Controllers\LokasiController;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\UserController;
+use App\Http\Controllers\GpsController;
 
 /* ═══════════════════════════════════════
    AUTH ROUTES (publik)
@@ -62,5 +63,20 @@ Route::middleware(['auth.brandes'])->group(function () {
     Route::get('/history-akses',       [HistoryController::class, 'index'])->name('history.akses');
     Route::get('/notifikasi-keamanan', [NotifikasiController::class, 'index'])->name('notifikasi.keamanan');
     Route::get('/lokasi-brankas',      [LokasiController::class, 'index'])->name('lokasi.brankas');
+
+});
+
+/* ═══════════════════════════════════════
+   API ROUTES — untuk perangkat IoT (ESP32)
+   Tidak memerlukan session/cookie, menggunakan token header
+═══════════════════════════════════════ */
+Route::prefix('api')->group(function () {
+
+    // POST /api/gps — ESP32 kirim data GPS Neo-6M
+    // Header: X-Device-Token: {GPS_DEVICE_TOKEN dari .env}
+    Route::post('/gps', [GpsController::class, 'store'])->name('api.gps.store');
+
+    // GET /api/gps/{kode_brankas} — polling data GPS terbaru dari frontend
+    Route::get('/gps/{kode_brankas}', [GpsController::class, 'latest'])->name('api.gps.latest');
 
 });
