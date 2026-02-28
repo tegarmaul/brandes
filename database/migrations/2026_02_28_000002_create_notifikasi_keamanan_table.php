@@ -1,0 +1,27 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    public function up(): void
+    {
+        Schema::create('notifikasi_keamanan', function (Blueprint $table) {
+            $table->id();
+            $table->string('judul');
+            $table->text('pesan');
+            $table->enum('tipe', ['warning', 'danger', 'info', 'success'])->default('info');
+            $table->boolean('dibaca')->default(false);
+            $table->foreignId('user_id')->nullable()->constrained('users')->nullOnDelete();
+            $table->timestamp('waktu')->useCurrent();
+            $table->timestamps();
+        });
+    }
+
+    public function down(): void
+    {
+        Schema::dropIfExists('notifikasi_keamanan');
+    }
+};

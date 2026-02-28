@@ -5,11 +5,11 @@ namespace App\Http\Middleware;
 use Closure;
 use Illuminate\Http\Request;
 
-class AdminMiddleware
+class UserMiddleware
 {
     /**
-     * Pastikan user yang mengakses adalah admin.
-     * Gunakan: middleware('role.admin')
+     * Pastikan user yang mengakses adalah user biasa (bukan admin).
+     * Gunakan: middleware('role.user')
      */
     public function handle(Request $request, Closure $next)
     {
@@ -18,9 +18,9 @@ class AdminMiddleware
             return redirect()->route('login');
         }
 
-        // Sudah login tapi bukan admin
-        if (session('user.role') !== 'admin') {
-            return redirect()->route('dashboard.user')
+        // Sudah login tapi bukan user biasa
+        if (session('user.role') !== 'user') {
+            return redirect()->route('dashboard.admin')
                 ->with('error', 'Anda tidak memiliki akses ke halaman tersebut.');
         }
 
