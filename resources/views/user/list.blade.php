@@ -363,7 +363,11 @@
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M7.864 4.243A7.5 7.5 0 0119.5 10.5c0 2.92-.556 5.709-1.568 8.268M5.742 6.364A7.465 7.465 0 004.5 10.5a7.464 7.464 0 01-1.15 3.993m1.989 3.559A11.209 11.209 0 008.25 10.5a3.75 3.75 0 117.5 0c0 .527-.021 1.049-.064 1.565M12 10.5a14.94 14.94 0 01-3.6 9.75m6.633-4.596a18.666 18.666 0 01-2.485 5.33"/>
                                 </svg>
-                                {{ $user->fingerprint ?? 'FP-000-0000' }}
+                                @if($user->fingerprint_id)
+                                    Slot #{{ $user->fingerprint_id }}
+                                @else
+                                    <span style="color:var(--text-muted);font-style:italic;">Belum terdaftar</span>
+                                @endif
                             </div>
                         </td>
                         <td>
@@ -371,13 +375,13 @@
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 5.25a3 3 0 013 3m3 0a6 6 0 01-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 1121.75 8.25z"/>
                                 </svg>
-                                {{ $user->pin }}
+                                ••••••
                             </div>
                         </td>
                         <td class="badge-role">{{ ucfirst($user->role) }}</td>
                         <td>
-                            <span class="badge-status {{ isset($user->status) && $user->status === 'nonaktif' ? 'nonaktif' : 'aktif' }}">
-                                {{ isset($user->status) && $user->status === 'nonaktif' ? 'Nonaktif' : 'Aktif' }}
+                            <span class="badge-status {{ $user->aktif ? 'aktif' : 'nonaktif' }}">
+                                {{ $user->aktif ? 'Aktif' : 'Nonaktif' }}
                             </span>
                         </td>
                         <td>
@@ -423,32 +427,47 @@
             </div>
             <form action="{{ route('user.store') }}" method="POST">
                 @csrf
+                <input type="hidden" name="role" value="user">
 
                 {{-- Nama --}}
                 <div class="form-group">
-                    <label>Nama</label>
+                    <label>Nama Lengkap</label>
                     <div class="input-wrapper">
                         <span class="input-icon">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"/>
                             </svg>
                         </span>
-                        <input type="text" name="nama" class="form-control with-icon" placeholder="Masukan nama user" required>
+                        <input type="text" name="nama" class="form-control with-icon" placeholder="Masukan nama lengkap user" required>
                     </div>
                 </div>
 
-                {{-- Fingerprint --}}
+                {{-- Username --}}
                 <div class="form-group">
-                    <label>Fingerprint</label>
+                    <label>Username</label>
+                    <div class="input-wrapper">
+                        <span class="input-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"/>
+                            </svg>
+                        </span>
+                        <input type="text" name="username" class="form-control with-icon" placeholder="Masukan username unik" required autocomplete="off">
+                    </div>
+                </div>
+
+                {{-- Fingerprint ID --}}
+                <div class="form-group">
+                    <label>Slot Fingerprint (IoT)</label>
                     <div class="input-wrapper">
                         <span class="input-icon">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M7.864 4.243A7.5 7.5 0 0119.5 10.5c0 2.92-.556 5.709-1.568 8.268M5.742 6.364A7.465 7.465 0 004.5 10.5a7.464 7.464 0 01-1.15 3.993m1.989 3.559A11.209 11.209 0 008.25 10.5a3.75 3.75 0 117.5 0c0 .527-.021 1.049-.064 1.565M12 10.5a14.94 14.94 0 01-3.6 9.75m6.633-4.596a18.666 18.666 0 01-2.485 5.33"/>
                             </svg>
                         </span>
-                        <input type="text" name="fingerprint" class="form-control with-icon" placeholder="Masukan ID User">
+                        <input type="number" name="fingerprint_id" class="form-control with-icon"
+                               placeholder="Nomor slot (1–127)" min="1" max="127" inputmode="numeric">
                     </div>
-                    <p class="form-hint">ID yang akan digunakan untuk verifikasi fingerprint IoT</p>
+                    <p class="form-hint">Nomor slot penyimpanan sidik jari pada sensor biometrik ESP32 (1–127). Kosongkan jika belum didaftarkan.</p>
                 </div>
 
                 {{-- PIN --}}
@@ -460,7 +479,7 @@
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 5.25a3 3 0 013 3m3 0a6 6 0 01-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 1121.75 8.25z"/>
                             </svg>
                         </span>
-                        <input type="password" name="pin" id="pinInput" class="form-control with-icon with-icon-right" placeholder="Masukan PIN user" maxlength="6" inputmode="numeric" required>
+                        <input type="password" name="pin" id="pinInput" class="form-control with-icon with-icon-right" placeholder="6 digit PIN" maxlength="6" inputmode="numeric" required>
                         <button type="button" class="toggle-eye" onclick="togglePin()" title="Tampilkan PIN">
                             <svg id="eyeIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.964-7.178z"/>
@@ -468,10 +487,10 @@
                             </svg>
                         </button>
                     </div>
-                    <p class="form-hint">PIN yang akan digunakan pada keypad IoT untuk verifikasi akses</p>
+                    <p class="form-hint">PIN 6 digit yang digunakan pada keypad IoT untuk verifikasi akses</p>
                 </div>
 
-                <button type="submit" class="btn-submit">Tambah</button>
+                <button type="submit" class="btn-submit">Tambah User</button>
             </form>
         </div>
     </div>

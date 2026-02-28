@@ -12,8 +12,8 @@ return new class extends Migration
             $table->id();
             $table->string('nama');
             $table->string('username')->unique();
-            $table->string('pin');                             // bcrypt hash
-            $table->string('fingerprint_id')->unique()->nullable(); // ID dari ESP32
+            $table->string('pin');                                        // bcrypt hash
+            $table->unsignedSmallInteger('fingerprint_id')->unique()->nullable(); // Slot ID dari sensor biometrik ESP32 (1–127)
             $table->enum('role', ['admin', 'user'])->default('user');
             $table->boolean('aktif')->default(true);
             $table->timestamps();
