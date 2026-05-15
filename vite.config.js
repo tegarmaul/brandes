@@ -1,18 +1,48 @@
 import { defineConfig } from 'vite';
 import laravel from 'laravel-vite-plugin';
+import tailwindcss from '@tailwindcss/vite';
+import fs from 'node:fs';
+import path from 'node:path';
 
 /**
- * Sistem ini tidak menggunakan Vite untuk bundling CSS/JS.
- * Semua CSS ditulis inline di masing-masing Blade view.
- * File JS publik berada di public/js/ dan di-load langsung via asset().
- *
- * Konfigurasi ini dibiarkan minimal agar tidak error jika `npm run dev` dijalankan.
+ * Helper function to get all CSS and JS files recursively
+ * Optimized with withFileTypes for better performance on Windows
  */
+function getFiles(dir, files_ = []) {
+    if (!fs.existsSync(dir)) return files_;
+    
+    try {
+        const entries = fs.readdirSync(dir, { withFileTypes: true });
+        
+        for (const entry of entries) {
+            const fullPath = path.join(dir, entry.name);
+            if (entry.isDirectory()) {
+                getFiles(fullPath, files_);
+            } else if (entry.isFile()) {
+                if (entry.name.endsWith('.css') || entry.name.endsWith('.js')) {
+                    files_.push(fullPath.replace(/\\/g, '/'));
+                }
+            }
+        }
+    } catch (error) {
+        console.error(`Error scanning directory ${dir}:`, error.message);
+    }
+    return files_;
+}
+
+const assetFiles = [
+    ...getFiles('resources/css'),
+    ...getFiles('resources/js')
+];
+
 export default defineConfig({
     plugins: [
+        tailwindcss(),
         laravel({
-            input: [],
-            refresh: false,
+            input: assetFiles,
+            refresh: true,
         }),
     ],
 });
+
+

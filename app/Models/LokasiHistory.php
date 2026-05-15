@@ -5,17 +5,27 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 
 /**
- * Model untuk riwayat posisi GPS yang dikirim ESP32 + GPS Neo-6M.
- *
- * Setiap pengiriman data dari ESP32 menghasilkan satu record baru.
- * Data NMEA yang diparse dari GPS Neo-6M:
- * - GPGGA: latitude, longitude, altitude, fix_quality, satellites, hdop
- * - GPRMC: speed_kmh, heading
+ * Model untuk merepresentasikan tabel 'lokasi_history'.
+ * Mencatat riwayat log GPS dan metrik sensor getaran yang dikirim oleh perangkat IoT.
+ * 
+ * Informasi NMEA yang diproses:
+ * - GPGGA: Koordinat, Ketinggian, Kualitas Fix, Satelit, HDOP.
+ * - GPRMC: Kecepatan (Speed), Heading.
  */
 class LokasiHistory extends Model
 {
+    /**
+     * Nama tabel yang dikaitkan dengan model ini.
+     *
+     * @var string
+     */
     protected $table = 'lokasi_history';
 
+    /**
+     * Atribut yang dapat diisi secara massal (mass assignable).
+     *
+     * @var array
+     */
     protected $fillable = [
         'lokasi_brankas_id',
         'latitude',
@@ -31,6 +41,11 @@ class LokasiHistory extends Model
         'recorded_at',
     ];
 
+    /**
+     * Atribut yang harus dikonversi ke tipe data tertentu (casting).
+     *
+     * @var array
+     */
     protected $casts = [
         'latitude'    => 'decimal:8',
         'longitude'   => 'decimal:8',
@@ -44,7 +59,10 @@ class LokasiHistory extends Model
     ];
 
     /**
-     * Relasi ke brankas
+     * Mendapatkan data master brankas yang terkait dengan riwayat ini.
+     * Relasi: Many-to-One (BelongsTo)
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
      */
     public function brankas()
     {
@@ -52,11 +70,13 @@ class LokasiHistory extends Model
     }
 
     /**
-     * Label status dalam Bahasa Indonesia
+     * Mengonversi kode status sistem ke label Bahasa Indonesia yang ramah pengguna.
+     *
+     * @return string
      */
     public function statusLabel(): string
     {
-        return match($this->status) {
+        return match ($this->status) {
             'waspada' => 'Waspada',
             'bahaya'  => 'Bahaya',
             default   => 'Normal',
@@ -64,19 +84,29 @@ class LokasiHistory extends Model
     }
 
     /**
-     * Tentukan status otomatis berdasarkan nilai getaran dan kecepatan
-     * - bahaya  : getaran > 3.0 G atau kecepatan > 5 km/h
-     * - waspada : getaran > 1.0 G atau kecepatan > 1 km/h
-     * - normal  : lainnya
+     * Logika bisnis otomatis untuk menentukan status keamanan berdasarkan metrik sensor.
+     * Aturan Deteksi:
+     * - Bahaya  : Getaran > 3.0 G ATAU Kecepatan > 5.0 km/h (Indikasi brankas dibawa lari).
+     * - Waspada : Getaran > 1.0 G ATAU Kecepatan > 1.0 km/h (Indikasi guncangan/perpindahan pelan).
+     * - Normal  : Kondisi diam dan tenang.
+     *
+     * @param  float|null  $getaran
+     * @param  float|null  $speedKmh
+     * @return string
      */
     public static function determineStatus(?float $getaran, ?float $speedKmh): string
     {
+        // 1. Cek Kondisi Bahaya (Prioritas Tertinggi)
         if (($getaran !== null && $getaran > 3.0) || ($speedKmh !== null && $speedKmh > 5.0)) {
             return 'bahaya';
         }
+
+        // 2. Cek Kondisi Waspada
         if (($getaran !== null && $getaran > 1.0) || ($speedKmh !== null && $speedKmh > 1.0)) {
             return 'waspada';
         }
+
+        // 3. Kondisi Aman/Normal
         return 'normal';
     }
 }
